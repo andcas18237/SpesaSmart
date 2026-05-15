@@ -1,35 +1,36 @@
 {
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": {
-    "strict": true,
-    "types": [
-      "node",
-      "nativewind/types"
-    ],
-    "paths": {
-      "@/*": [
-        "./"
-      ],
-      "@/src/*": [
-        "./src/*"
-      ],
-      "@/features/*": [
-        "./src/features/*"
-      ],
-      "@shared/*": [
-        "./shared/*"
-      ]
-    }
-  },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+	"extends": "expo/tsconfig.base",
+	"compilerOptions": {
+		"strict": true,
+		"types": [
+			"node",
+			"nativewind/types"
+		],
+		"paths": {
+			"@/*": [
+				"./"
+			],
+			"@/src/*": [
+				"./src/*"
+			],
+			"@/features/*": [
+				"./src/features/*"
+			],
+			"@shared/*": [
+				"./shared/*"
+			],
+			"lib/*": [
+				"./lib/*"
+			]
+		}
+	},
+	"include": [
+		"**/*.ts",
+		"**/*.tsx",
+		"nativewind-env.d.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist"
+	]
 }
