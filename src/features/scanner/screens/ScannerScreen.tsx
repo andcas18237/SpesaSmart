@@ -1,28 +1,114 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, Pressable, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ScreenContainer } from '../../../../components/screen-container';
 
 /**
  * Scanner Screen - Capture receipt photos.
- * TODO: Integrate with expo-camera for actual camera functionality.
- * Currently shows placeholder UI.
+ * Integrates with expo-camera for actual camera functionality.
  */
 export default function ScannerScreen() {
   const router = useRouter();
+  const cameraRef = useRef<CameraView>(null);
   const [isPreview, setIsPreview] = useState(false);
+  const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [flashEnabled, setFlashEnabled] = useState(false);
 
-  const handleCapture = () => {
-    setIsPreview(true);
+  // Request camera permission on mount
+  useEffect(() => {
+    if (!permission) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
+
+  // Handle camera permission denied
+  if (!permission) {
+    return (
+      <ScreenContainer className="flex-1 items-center justify-center p-4">
+        <Text className="text-lg font-bold text-foreground mb-4">
+          Permesso fotocamera richiesto
+        </Text>
+        <Text className="text-base text-muted text-center mb-6">
+          L'app ha bisogno dell'accesso alla fotocamera per scansionare gli scontrini.
+        </Text>
+        <Pressable
+          onPress={requestPermission}
+          style={({ pressed }) => [
+            {
+              opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            },
+          ]}
+        >
+          <View className="bg-primary rounded-full py-3 px-6 items-center justify-center">
+            <Text className="text-white font-bold text-lg">
+              Abilita Fotocamera
+            </Text>
+          </View>
+        </Pressable>
+      </ScreenContainer>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <ScreenContainer className="flex-1 items-center justify-center p-4">
+        <Text className="text-lg font-bold text-foreground mb-4">
+          Accesso fotocamera negato
+        </Text>
+        <Text className="text-base text-muted text-center mb-6">
+          Per usare lo scanner, consenti l'accesso alla fotocamera nelle impostazioni.
+        </Text>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [
+            {
+              opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+            },
+          ]}
+        >
+          <View className="bg-surface border border-border rounded-full py-3 px-6 items-center justify-center">
+            <Text className="text-foreground font-bold text-lg">
+              Indietro
+            </Text>
+          </View>
+        </Pressable>
+      </ScreenContainer>
+    );
+  }
+
+  const handleCapture = async () => {
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          base64: false,
+        });
+        setCapturedPhotoUri(photo.uri);
+        setIsPreview(true);
+      } catch (error) {
+        Alert.alert('Errore', 'Impossibile scattare la foto. Riprova.');
+        console.error('Camera capture error:', error);
+      }
+    }
   };
 
   const handleConfirm = () => {
-    // TODO: Send to OCR processing
+    // TODO: Send to OCR processing with capturedPhotoUri
+    console.log('Photo URI:', capturedPhotoUri);
     router.back();
   };
 
   const handleRetry = () => {
+    setCapturedPhotoUri(null);
     setIsPreview(false);
+  };
+
+  const toggleFlash = () => {
+    setFlashEnabled(!flashEnabled);
   };
 
   return (
@@ -40,15 +126,35 @@ export default function ScannerScreen() {
             <Text className="text-lg font-bold text-foreground">
               Scansiona Scontrino
             </Text>
-            <View style={{ width: 60 }} />
+            <Pressable onPress={toggleFlash}>
+              <Text className="text-lg text-primary font-semibold">
+                {flashEnabled ? '⚡' : '🔦'}
+              </Text>
+            </Pressable>
           </View>
 
-          {/* Camera Placeholder */}
-          <View className="flex-1 bg-surface rounded-2xl border-2 border-border items-center justify-center gap-4">
-            <Text className="text-4xl">📷</Text>
-            <Text className="text-base text-muted text-center px-4">
-              Inquadra lo scontrino all'interno del rettangolo
-            </Text>
+          {/* Camera View */}
+          <View className="flex-1 rounded-2xl overflow-hidden border-2 border-border">
+            <CameraView
+              ref={cameraRef}
+              style={{ flex: 1 }}
+              facing="back"
+              flash={flashEnabled ? 'on' : 'off'}
+            >
+              {/* Guide Frame */}
+              <View className="flex-1 items-center justify-center">
+                <View
+                  style={{
+                    width: '80%',
+                    aspectRatio: 1.4,
+                    borderWidth: 2,
+                    borderColor: '#10B981',
+                    borderRadius: 12,
+                    backgroundColor: 'transparent',
+                  }}
+                />
+              </View>
+            </CameraView>
           </View>
 
           {/* Capture Button */}
@@ -76,10 +182,16 @@ export default function ScannerScreen() {
             </Text>
           </View>
 
-          {/* Photo Placeholder */}
-          <View className="flex-1 bg-surface rounded-2xl border-2 border-border items-center justify-center">
-            <Text className="text-6xl">📸</Text>
-          </View>
+          {/* Photo Preview */}
+          {capturedPhotoUri && (
+            <View className="flex-1 bg-surface rounded-2xl border-2 border-border overflow-hidden">
+              <Image
+                source={{ uri: capturedPhotoUri }}
+                style={{ flex: 1 }}
+                resizeMode="contain"
+              />
+            </View>
+          )}
 
           {/* Action Buttons */}
           <View className="gap-3">
