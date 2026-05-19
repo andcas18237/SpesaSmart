@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, Pressable, Alert, Image } from 'react-native';
+import { View, Text, Pressable, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
 import { ScreenContainer } from '../../../../components/screen-container';
+import { trpc } from '@/lib/trpc';
 
 /**
  * Scanner Screen - Capture receipt photos.
@@ -15,6 +17,10 @@ export default function ScannerScreen() {
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [flashEnabled, setFlashEnabled] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+
+  const processReceiptMutation = trpc.expenses.processReceipt.useMutation();
 
   // Request camera permission on mount
   useEffect(() => {
@@ -96,10 +102,35 @@ export default function ScannerScreen() {
     }
   };
 
-  const handleConfirm = () => {
-    // TODO: Send to OCR processing with capturedPhotoUri
-    console.log('Photo URI:', capturedPhotoUri);
-    router.back();
+  const handleConfirm = async () => {
+    if (!capturedPhotoUri) return;
+
+    try {
+      setIsProcessing(true);
+      
+      // Convert image to base64
+      const base64 = await FileSystem.readAsStringAsync(capturedPhotoUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Call tRPC procedure
+      const result = await processReceiptMutation.mutateAsync({
+        imageBase64: base64,
+      });
+
+      // Log and save result
+      console.log('OCR Result:', result);
+      setOcrResult(result);
+      
+      // Per ora torniamo indietro come richiesto, ma dopo aver loggato
+      // In futuro qui si passerà alla schermata dei risultati
+      router.back();
+    } catch (error) {
+      console.error('OCR processing error:', error);
+      Alert.alert('Errore', 'Si è verificato un errore durante l\'elaborazione dello scontrino.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleRetry = () => {
@@ -113,6 +144,12 @@ export default function ScannerScreen() {
 
   return (
     <ScreenContainer className="p-4">
+      {isProcessing && (
+        <View className="absolute inset-0 z-50 bg-background/80 items-center justify-center">
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text className="text-foreground font-semibold mt-4">Elaborazione...</Text>
+        </View>
+      )}
       {!isPreview ? (
         // Camera View
         <View className="flex-1 gap-4">
