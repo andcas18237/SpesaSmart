@@ -91,7 +91,7 @@ export default function ScannerScreen() {
       try {
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
-          base64: false,
+          base64: true,
         });
         setCapturedPhotoUri(photo.uri);
         setIsPreview(true);
@@ -108,10 +108,12 @@ export default function ScannerScreen() {
     try {
       setIsProcessing(true);
       
-      // Convert image to base64
+      // Get base64 from file system
       const base64 = await FileSystem.readAsStringAsync(capturedPhotoUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
+
+      console.log('Base64 string length:', base64.length);
 
       // Call tRPC procedure
       const result = await processReceiptMutation.mutateAsync({
@@ -131,7 +133,7 @@ export default function ScannerScreen() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }
 
   const handleRetry = () => {
     setCapturedPhotoUri(null);
