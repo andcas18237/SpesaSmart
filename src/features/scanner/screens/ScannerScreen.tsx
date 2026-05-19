@@ -14,6 +14,7 @@ export default function ScannerScreen() {
   const cameraRef = useRef<CameraView>(null);
   const [isPreview, setIsPreview] = useState(false);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
+  const [capturedPhotoBase64, setCapturedPhotoBase64] = useState<string | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -93,6 +94,7 @@ export default function ScannerScreen() {
           base64: true,
         });
         setCapturedPhotoUri(photo.uri);
+        setCapturedPhotoBase64(photo.base64 || null);
         setIsPreview(true);
       } catch (error) {
         Alert.alert('Errore', 'Impossibile scattare la foto. Riprova.');
@@ -102,31 +104,16 @@ export default function ScannerScreen() {
   };
 
   const handleConfirm = async () => {
-    if (!capturedPhotoUri) return;
+    if (!capturedPhotoBase64) return;
 
     try {
       setIsProcessing(true);
       
-      // Convert image URI to base64
-      const response = await fetch(capturedPhotoUri);
-      const blob = await response.blob();
-      
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          const base64String = result.split(',')[1] || result;
-          resolve(base64String);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      console.log('Base64 string length:', capturedPhotoBase64.length);
 
-      console.log('Base64 string length:', base64.length);
-
-      // Call tRPC procedure
+      // Call tRPC procedure with base64 from camera
       const result = await processReceiptMutation.mutateAsync({
-        imageBase64: base64,
+        imageBase64: capturedPhotoBase64,
       });
 
       // Log and save result
@@ -146,6 +133,7 @@ export default function ScannerScreen() {
 
   const handleRetry = () => {
     setCapturedPhotoUri(null);
+    setCapturedPhotoBase64(null);
     setIsPreview(false);
   };
 
