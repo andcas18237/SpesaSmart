@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, Pressable, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
 import { ScreenContainer } from '../../../../components/screen-container';
 import { trpc } from '@/lib/trpc';
 
@@ -108,9 +107,19 @@ export default function ScannerScreen() {
     try {
       setIsProcessing(true);
       
-      // Get base64 from file system
-      const base64 = await FileSystem.readAsStringAsync(capturedPhotoUri, {
-        encoding: FileSystem.EncodingType.Base64,
+      // Convert image URI to base64
+      const response = await fetch(capturedPhotoUri);
+      const blob = await response.blob();
+      
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64String = result.split(',')[1] || result;
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
       });
 
       console.log('Base64 string length:', base64.length);
