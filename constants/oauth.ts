@@ -45,7 +45,16 @@ export function getApiBaseUrl(): string {
     }
   }
 
+  // Fallback for development
+  if (__DEV__) {
+    if (ReactNative.Platform.OS === "android") {
+      return "http://10.0.2.2:3000";
+    }
+    return "http://localhost:3000";
+  }
+
   // Fallback to empty (will use relative URL)
+  console.warn("[OAuth] API_BASE_URL is not set and we are not in __DEV__ mode.");
   return "";
 }
 
